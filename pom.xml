@@ -13,6 +13,7 @@
 
     <modules>
         <module>exchange-core</module>
+        <module>exchange-server</module>
     </modules>
 
     <properties>

@@ -1,0 +1,78 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: glassbook
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/glassbook}
+    username: ${DB_USER:glassbook}
+    password: ${DB_PASSWORD:glassbook}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 15000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: glassbook
+
+glassbook:
+  engine:
+    data-dir: ${ENGINE_DATA_DIR:./data/engine}
+    queue-capacity: 65536
+    max-batch: 512
+    fsync: ${ENGINE_FSYNC:true}
+    snapshot-every-commands: 200000
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
+    token-ttl: PT12H
+    admin-username: ${ADMIN_USER:operator}
+    admin-password: ${ADMIN_PASSWORD:operator-change-me}
+    order-rate-per-minute: 1200
+  demo:
+    welcome-cash: 1000000000
+    welcome-shares: 1000
+  simulator:
+    enabled: ${SIMULATOR_ENABLED:true}
+    bots: 12
+    operations-per-second: 250
+    seed: 42
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
+    trades-topic: glassbook.trades
+  instruments:
+    - { id: 1, symbol: GLSS, name: "Glassbook Corp",    tick-size: 1, lot-size: 1,  price-scale: 2, initial-price: 10000 }
+    - { id: 2, symbol: MERI, name: "Meridian Holdings", tick-size: 5, lot-size: 1,  price-scale: 2, initial-price: 52500 }
+    - { id: 3, symbol: KRNL, name: "Kernel Systems",    tick-size: 1, lot-size: 10, price-scale: 2, initial-price: 2500 }
