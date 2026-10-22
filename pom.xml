@@ -14,6 +14,7 @@
     <modules>
         <module>exchange-core</module>
         <module>exchange-server</module>
+        <module>exchange-bench</module>
     </modules>
 
     <properties>

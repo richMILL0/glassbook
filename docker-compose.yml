@@ -1,0 +1,73 @@
+#   UI + API   http://localhost:8080
+#   Grafana    http://localhost:3000   (admin / admin)
+#   Prometheus http://localhost:9090
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: glassbook
+      POSTGRES_USER: glassbook
+      POSTGRES_PASSWORD: glassbook
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glassbook"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.8.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      postgres: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/glassbook
+      DB_USER: glassbook
+      DB_PASSWORD: glassbook
+      KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP: kafka:9092
+      SIMULATOR_ENABLED: "true"
+      JWT_SECRET: change-me-change-me-change-me-change-me-change-me
+      ADMIN_PASSWORD: operator-change-me
+    volumes: [enginedata:/data]
+    ports: ["8080:8080"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes: ["./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [app]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  pgdata:
+  enginedata:
